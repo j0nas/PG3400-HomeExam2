@@ -4,7 +4,8 @@
 #include <ctype.h>
 #include <dirent.h>
 
-int d = 2;
+int d = 2; // distance
+#define ACCEPTED_ACCURACY 90 // % of words correct required when cracking
 
 struct Codepoint {
     char code[10];
@@ -18,28 +19,24 @@ char *getFileContent(const char *filename) {
     char *source = NULL;
     FILE *fp = fopen(filename, "r");
     if (fp != NULL) {
-        /* Go to the end of the file. */
         if (fseek(fp, 0L, SEEK_END) == 0) {
-            /* Get the size of the file. */
             long bufsize = ftell(fp);
-            if (bufsize == -1) { /* Error */ }
+            if (bufsize == -1) { }
 
-            /* Allocate our buffer to that size. */
             source = malloc(sizeof(char) * (bufsize + 1));
             if (source == NULL) {
                 perror("Unable to allocate memory");
                 return source;
             }
 
-            /* Go back to the start of the file. */
-            if (fseek(fp, 0L, SEEK_SET) != 0) { /* Error */ }
-
-            /* Read the entire file into memory. */
+            if (fseek(fp, 0L, SEEK_SET) != 0) {
+                return NULL;
+            }
             size_t newLen = fread(source, sizeof(char), bufsize, fp);
             if (newLen == 0) {
                 fputs("Error reading file", stderr);
             } else {
-                source[newLen++] = '\0'; /* Just to be safe. */
+                source[newLen++] = '\0';
             }
         }
         fclose(fp);
@@ -193,7 +190,6 @@ void decodeMessage() {
     free(strStripped);
 }
 
-#define ACCEPTED_ACCURACY 90 // % of words correct required
 
 void crack() {
     printf("Cracking, please standby..");
