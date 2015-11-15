@@ -151,8 +151,47 @@ void encodeMessage() {
 
 void decodeMessage() {
     char *encodedMessage = getFileContent("encodedText.txt");
+    if (encodedMessage == NULL) {
+        return;
+    }
+
+    char *strStripped = getCompressedKey("lyrics.txt");
+    if (strStripped == NULL) {
+        return;
+    }
+
+    char resStr[strlen(encodedMessage)];
+    const char s[2] = "[";
+    char *token = strtok(encodedMessage, s);
+    char *ptr;
+    int resStrLen = 0, strippedPos = 0, strippedLength = strlen(strStripped);
+    while (token != NULL) {
+        // TODO: safety/sanity check this:
+        strippedPos = abs(strtol(token, &ptr, 10));
+        if (strippedPos > strippedLength) {
+            printf("Position of parsed char is outside bounds of compressed str: %d\n", strippedPos);
+            return;
+        }
+        resStr[resStrLen++] = strStripped[strippedPos];
+        // If char is marked as uppercase with '-' prefix..
+        if ((token[0] == '-' ? 1 : 0)) {
+            resStr[resStrLen - 1] = toupper(resStr[resStrLen - 1]);
+        }
+
+        if (ptr[strlen(ptr) - 1] != ']') {
+            if (strlen(ptr) > 1 && ptr[strlen(ptr) - 2] != ']') {
+                resStr[resStrLen++] = ptr[strlen(ptr) - 2];
+            }
+            resStr[resStrLen++] = ptr[strlen(ptr) - 1];
+        }
+
+        token = strtok(NULL, s);
+    }
+    resStr[resStrLen] = '\0';
+    printf("%s\n", resStr);
 
     free(encodedMessage);
+    free(strStripped);
 }
 
 int main() {
