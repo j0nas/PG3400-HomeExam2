@@ -13,6 +13,33 @@ struct Codepoint {
     int isAlpha;
 } typedef Codepoint;
 
+
+char *getFileContents(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        perror("Unable to open key file");
+        return NULL;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long size = size = ftell(file);
+    rewind(file);
+
+    char *result = (char *) malloc(size);
+    if (!result) {
+        fputs("Memory error.\n", stderr);
+        return NULL;
+    }
+
+    if (fread(result, 1, size, file) != size) {
+        fputs("Read error.\n", stderr);
+        return NULL;
+    }
+
+    fclose(file);
+    return result;
+}
+
 void readFile() {
     FILE *fp;
     long lSize;
@@ -44,7 +71,7 @@ void readFile() {
     fclose(fp);
     free(buffer);
 
-    printf("\n\n");
+    printf("\n");
 
     fp = fopen("inputMessage.txt", "rb");
     if (!fp) perror("Unable to open message file"), exit(1);
@@ -60,9 +87,8 @@ void readFile() {
         fclose(fp), free(buffer), fputs("Unable to read message file", stderr), exit(1);
 
     printf(buffer);
-    printf("\n\n");
+    printf("\n");
 
-    //char encodedMessage[strlen(buffer) * 5]; // worst-case
     Codepoint points[strlen(buffer)];
 
     int k = 0, l = 0;
@@ -80,14 +106,6 @@ void readFile() {
                     sprintf(points[l].pointChar, "%d", k);
                     points[l++].point = k;
                     break;
-                    /*
-                    char intStr[8];
-                    sprintf(intStr, isupper(buffer[i]) ? "-%d" : "%d", k);
-                    strcat(encodedMessage, "[");
-                    strcat(encodedMessage, intStr);
-                    strcat(encodedMessage, "]");
-                    break;
-                     */
                 }
             }
 
@@ -99,17 +117,11 @@ void readFile() {
         } else {
             char c[10] = {buffer[i]};
             strcpy(points[l].pointChar, c);
-
-            points[l].code[0] = buffer[i];
             points[l].isUpper = 0;
             points[l].isAlpha = 0;
             points[l++].point = -1;
-            //char c[10] = {buffer[i]};
-            //strcat(encodedMessage, c);
         }
     }
-    //encodedMessage[l] = '\0';
-    //printf(encodedMessage);
 
     int j = 0;
     for (; j < l; j++) {
