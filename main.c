@@ -25,6 +25,10 @@ char *getFileContent(const char *filename) {
 
             /* Allocate our buffer to that size. */
             source = malloc(sizeof(char) * (bufsize + 1));
+            if (source == NULL) {
+                perror("Unable to allocate memory");
+                return source;
+            }
 
             /* Go back to the start of the file. */
             if (fseek(fp, 0L, SEEK_SET) != 0) { /* Error */ }
@@ -45,37 +49,67 @@ char *getFileContent(const char *filename) {
     return source;
 }
 
-void readFile() {
-    // TODO null checks!
-    // TODO free resources
-    char *buffer = getFileContent("lyrics.txt");
-    if (buffer == NULL) {
-        return;
+int appendToFile(const char *filename, Codepoint point) {
+    FILE *f = fopen(filename, "a");
+    if (f == NULL) {
+        perror("Unable to write to file");
+        return 0;
     }
 
-    char strStripped[strlen(buffer)];
+    fprintf(f, point.isAlpha ? (point.isUpper ? "[-%s]" : "[%s]") : "%s", point.pointChar);
+    printf(point.isAlpha ? (point.isUpper ? "[-%s]" : "[%s]") : "%s", point.pointChar);
+    fclose(f);
+}
+
+char *getCompressedKey(const char *filename) {
+    char *buffer = getFileContent(filename);
+    if (buffer == NULL) {
+        return NULL;
+    }
+
+    char *compressedStr = malloc(sizeof(char) * strlen(buffer));
+    if (compressedStr == NULL) {
+        perror("Unable to allocate memory");
+        return NULL;
+    }
+
+    //char strStripped[strlen(buffer)];
     int i = 0, outputLength = 0;
     for (; i < strlen(buffer); i++) {
         if (isalpha(buffer[i])) {
-            strStripped[outputLength++] = tolower(buffer[i]);
+            compressedStr[outputLength++] = tolower(buffer[i]);
         }
     }
-    strStripped[outputLength] = '\0';
+    compressedStr[outputLength] = '\0';
+    return compressedStr;
+}
+
+void encodeMessage() {
+    // TODO null checks!
+    // TODO free resources
+    char *strStripped = getCompressedKey("lyrics.txt");
+    if (strStripped == NULL) {
+        return;
+    }
     printf("%s\n", strStripped);
 
-    buffer = getFileContent("inputMessage.txt");
+    char *buffer = getFileContent("inputMessage.txt");
+    if (buffer == NULL) {
+        return;
+    }
     printf("%s\n", buffer);
 
     Codepoint points[strlen(buffer)];
-
-    int k = 0, l = 0;
+    int k = 0, l = 0, i = 0, isWithinDist = 0;
     for (i = 0; i < strlen(buffer); i++) {
         if (isalpha(buffer[i])) {
-            for (k = 0; k < outputLength; k++) {
+            for (k = 0; k < strlen(strStripped); k++) {
                 if (l > 0 && ((abs(points[l - 1].point - k) < d) || (points[l - 1].point + k) < d)) {
+                    isWithinDist = 1;
                     continue;
                 }
 
+                isWithinDist = 0;
                 if (tolower(buffer[i]) == strStripped[k]) {
                     points[l].code[0] = tolower(buffer[i]);
                     points[l].isUpper = isupper(buffer[i]);
@@ -86,7 +120,12 @@ void readFile() {
                 }
             }
 
-            if (k >= outputLength) {
+            if (isWithinDist) {
+                printf("Unable to satisfy the d condition!\n");
+                return;
+            }
+
+            if (k >= strlen(strStripped)) {
                 printf("Unable to encode using the current key!\n"
                                "No matching position found for char '%c'\n", buffer[i]);
                 return;
@@ -101,14 +140,22 @@ void readFile() {
     }
 
     int j = 0;
+    remove("encodedText.txt");
     for (; j < l; j++) {
-        printf(points[j].isAlpha ? (points[j].isUpper ? "[-%s]" : "[%s]") : "%s", points[j].pointChar);
+        appendToFile("encodedText.txt", points[j]);
     }
     printf("\n");
 
     free(buffer);
 }
 
+void decodeMessage() {
+    char *encodedMessage = getFileContent("encodedText.txt");
+
+    free(encodedMessage);
+}
+
 int main() {
-    readFile();
+    encodeMessage();
+    decodeMessage();
 }
