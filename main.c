@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <dirent.h>
 
 int d = 2;
 
@@ -190,14 +191,119 @@ void decodeMessage() {
     resStr[resStrLen] = '\0';
     printf("%s\n", resStr);
 
+
     free(encodedMessage);
     free(strStripped);
 }
+
+#define ACCEPTED_ACCURACY 90 // % of words correct required
 
 void crack() {
     // Look at token length
     // find all words in /dict/words with matching length
     // check
+
+    char *encodedMessage = getFileContent("encodedText.txt");
+    if (encodedMessage == NULL) {
+        return;
+    }
+
+    // get compressed key of all lyrics, get chars from first token and search in /usr/words for word,
+    // if found, continue to next, else switch lyric
+    int res[1000][1000]; // [word #][char in word #]
+    int wordCount = 0, charCount = 0;
+
+    const char s[2] = "[";
+    char *token = strtok(encodedMessage, s);
+    char *ptr;
+    while (token != NULL) {
+        // TODO: safety/sanity check this:
+        res[wordCount][charCount++] = abs(strtol(token, &ptr, 10));
+        if (res[wordCount][charCount - 1] == 0) {
+            res[wordCount][charCount - 1] = -1;
+        }
+
+        if (ptr[strlen(ptr) - 1] != ']') {
+            if (strlen(ptr) > 1 && !isdigit(ptr[strlen(ptr) - 2])) {
+                charCount = 0;
+                wordCount++;
+            }/* else {
+                charCount++;
+            }*/
+        }
+
+        token = strtok(NULL, s);
+    }
+
+    FILE *file;
+    char line[BUFSIZ];
+
+    if ((file = fopen("/usr/share/dict/words", "r")) == NULL) {
+        fprintf(stderr, "cannot open %s\n", "/usr/share/dict/words");
+        return;
+    }
+
+    DIR *d = opendir("./songLibrary");
+    struct dirent *dir;
+    if (d) {
+        while ((dir = readdir(d)) != NULL) {
+            if (dir->d_type == DT_REG) {
+                printf("%s\n", dir->d_name);
+
+                // for (lyric in LyricsFolder) {
+
+                char *fullPath = strcat("./songLibrary", dir->d_name);
+                //char *strStripped = getCompressedKey(dir->d_name);
+                char *strStripped = getCompressedKey(fullPath);
+                if (strStripped == NULL) {
+                    return;
+                }
+
+                int wordsMatched = 0;
+                int i = 0;
+                for (; i < wordCount; i++) {
+                    int j = 0;
+                    char word[100];
+                    while (res[i][j] != 0) { // for each char
+                        word[j] = strStripped[res[i][j] == -1 ? 0 : res[i][j]];
+                        j++;
+                        //printf("%d ", res[i][j] == -1 ? 0 : res[i][j++]);
+                    }
+                    word[j] = '\0';
+                    rewind(file);
+                    while (!feof(file)) {
+                        char newStr[100];
+                        fgets(line, sizeof(line), file);
+                        int h = 0, c = 0;
+                        for (; h < strlen(line); h++) {
+                            if (isalnum(line[h])) {
+                                newStr[c++] = line[h];
+                            }
+                        }
+                        newStr[c] = '\0';
+
+                        //printf("%s | %s | %d\n", line, word, strcmp(line, word));
+                        if (strcmp(newStr, word) == 0) {
+                            wordsMatched++;
+                            printf("Word found: %s\n", line);
+                            break;
+                        }
+                    }
+                }
+
+                if (((wordsMatched * 100) / wordCount) > ACCEPTED_ACCURACY) {
+                    printf("FOUND MATCHING SONG OH MY GOD: %s", dir->d_name);
+                    break;
+                }
+            }
+        }
+
+        closedir(d);
+    }
+
+    fclose(file);
+    free(encodedMessage);
+    //free(strStripped);
 }
 
 int main() {
