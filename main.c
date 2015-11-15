@@ -194,7 +194,15 @@ void decodeMessage() {
     free(strStripped);
 }
 
+void crack() {
+    // Look at token length
+    // find all words in /dict/words with matching length
+    // check
+}
+
 int main() {
     encodeMessage();
     decodeMessage();
+
+    crack();
 }
