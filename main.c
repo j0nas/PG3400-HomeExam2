@@ -86,8 +86,6 @@ char *getCompressedKey(const char *filename) {
 }
 
 void encodeMessage() {
-    // TODO null checks!
-    // TODO free resources
     char *strStripped = getCompressedKey("lyrics.txt");
     if (strStripped == NULL) {
         return;
@@ -167,7 +165,6 @@ void decodeMessage() {
     char *ptr;
     int resStrLen = 0, strippedPos = 0, strippedLength = strlen(strStripped);
     while (token != NULL) {
-        // TODO: safety/sanity check this:
         strippedPos = abs(strtol(token, &ptr, 10));
         if (strippedPos > strippedLength) {
             printf("Position of parsed char is outside bounds of compressed str: %d\n", strippedPos);
@@ -199,17 +196,12 @@ void decodeMessage() {
 #define ACCEPTED_ACCURACY 90 // % of words correct required
 
 void crack() {
-    // Look at token length
-    // find all words in /dict/words with matching length
-    // check
-
+    printf("Cracking, please standby..");
     char *encodedMessage = getFileContent("encodedText.txt");
     if (encodedMessage == NULL) {
         return;
     }
 
-    // get compressed key of all lyrics, get chars from first token and search in /usr/words for word,
-    // if found, continue to next, else switch lyric
     int res[1000][1000]; // [word #][char in word #]
     int wordCount = 0, charCount = 0;
 
@@ -217,7 +209,6 @@ void crack() {
     char *token = strtok(encodedMessage, s);
     char *ptr;
     while (token != NULL) {
-        // TODO: safety/sanity check this:
         res[wordCount][charCount++] = abs(strtol(token, &ptr, 10));
         if (res[wordCount][charCount - 1] == 0) {
             res[wordCount][charCount - 1] = -1;
@@ -227,9 +218,7 @@ void crack() {
             if (strlen(ptr) > 1 && !isdigit(ptr[strlen(ptr) - 2])) {
                 charCount = 0;
                 wordCount++;
-            }/* else {
-                charCount++;
-            }*/
+            }
         }
 
         token = strtok(NULL, s);
@@ -248,13 +237,13 @@ void crack() {
     if (d) {
         while ((dir = readdir(d)) != NULL) {
             if (dir->d_type == DT_REG) {
-                printf("%s\n", dir->d_name);
+                char basePath[100];
+                strcpy(basePath, "./songLibrary/");
 
-                // for (lyric in LyricsFolder) {
-
-                char *fullPath = strcat("./songLibrary", dir->d_name);
-                //char *strStripped = getCompressedKey(dir->d_name);
-                char *strStripped = getCompressedKey(fullPath);
+                char fileName[100];
+                strcpy(fileName, dir->d_name);
+                strcat(basePath, fileName);
+                char *strStripped = getCompressedKey(basePath);
                 if (strStripped == NULL) {
                     return;
                 }
@@ -267,7 +256,6 @@ void crack() {
                     while (res[i][j] != 0) { // for each char
                         word[j] = strStripped[res[i][j] == -1 ? 0 : res[i][j]];
                         j++;
-                        //printf("%d ", res[i][j] == -1 ? 0 : res[i][j++]);
                     }
                     word[j] = '\0';
                     rewind(file);
@@ -282,17 +270,15 @@ void crack() {
                         }
                         newStr[c] = '\0';
 
-                        //printf("%s | %s | %d\n", line, word, strcmp(line, word));
                         if (strcmp(newStr, word) == 0) {
                             wordsMatched++;
-                            printf("Word found: %s\n", line);
                             break;
                         }
                     }
                 }
 
                 if (((wordsMatched * 100) / wordCount) > ACCEPTED_ACCURACY) {
-                    printf("FOUND MATCHING SONG OH MY GOD: %s", dir->d_name);
+                    printf("FOUND MATCHING SONG: %s\n", dir->d_name);
                     break;
                 }
             }
@@ -303,12 +289,10 @@ void crack() {
 
     fclose(file);
     free(encodedMessage);
-    //free(strStripped);
 }
 
 int main() {
     encodeMessage();
     decodeMessage();
-
     crack();
 }
